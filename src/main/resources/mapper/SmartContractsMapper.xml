@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pingan.chain.mapper.SmartContractsMapper">
+
+	<select id="queryCustomerInfo" parameterType="java.lang.String" resultType="com.pingan.chain.domain.ChainAccount">
+	     select userId,address,balance,frozen,exchange from chain_account
+	      where 
+	      <if test="um != null" >
+	        userId = #{um}
+	      </if>
+	</select>
+	
+	<update id="updateUserStatus" parameterType="java.lang.String">
+	    update chain_account set frozen=#{status} where userId=#{um}
+	</update>
+	
+	<select id="selectUserStatus" parameterType="java.lang.String" resultType="java.lang.String"> 
+	    select frozen from chain_account where userId = #{um}
+	</select>
+
+	<insert id="insertChangeIntegralInfo" parameterType="com.pingan.chain.domain.ChangeIntegralInfo">
+	    INSERT INTO ChangeIntegral
+		(userId,userAddress,giftId,giftName,exchangeBalance,exchangeTime,platformName,platformAddress)
+		VALUES
+		(#{userId},#{userAddress},#{giftId},#{giftName},#{exchangeBalance},#{exchangeTime},#{platformName},#{platformAddress})
+	</insert>
+	
+	<select id="selectUserInfo" parameterType="java.lang.String" resultType="com.pingan.chain.domain.ChainAccount">
+	     select userId,address,balance,frozen,exchange from chain_account
+	      where 
+	      <if test="userId != null" >
+	        userId = #{userId},
+	      </if>
+	</select>
+	      
+	<update id="updateChainAccountInfo" parameterType="com.pingan.chain.domain.ChainAccount">
+	       update chain_account set
+	      <if test="balance != null" >
+	        balance = #{balance},
+	      </if>
+		  <if test="frozen != null" >
+	        frozen = #{frozen},
+	      </if>
+	      where  userId = #{userId}
+	</update>
+	
+	<select id="selectModelAccount" parameterType="java.lang.String" resultType="com.pingan.chain.domain.ModelAccount">
+	     select name,address,balance,frozen,relaseTime from model_account
+	     where address = #{address}
+	</select>
+	
+	<update id="updateModelAccount" parameterType="com.pingan.chain.domain.ModelAccount">
+	     update model_account set
+	      <if test="balance != null" >
+	        balance = #{balance},
+	      </if>
+	     where address = #{address}
+	</update>
+	
+	<select id="selectOrderRuleInfo" parameterType="java.lang.String" resultType="com.pingan.chain.domain.OrderRuleInfo">
+	      select eventId,eventName,beginRatio,decrementRatio,endRatio,count from OrderRule 
+	      where eventId = #{eventId}
+	</select>
+	
+	<insert id="insertOrderRuleInfo" parameterType="com.pingan.chain.domain.OrderRuleInfo">
+		INSERT INTO OrderRule
+		(eventId,eventName,beginRatio,decrementRatio,endRatio,count)
+		VALUES
+		(#{eventId},#{eventName},#{beginRatio},#{decrementRatio},#{endRatio},#{count})
+	</insert>
+	
+	<update id="updateOrderRuleInfo" parameterType="com.pingan.chain.domain.OrderRuleInfo">
+	   update OrderRule set 
+	      <if test="eventName != null" >
+	        eventName = #{eventName},
+	      </if>
+	      <if test="beginRatio != null" >
+	        beginRatio = #{beginRatio},
+	      </if>
+	      <if test="decrementRatio != null" >
+	        decrementRatio = #{decrementRatio},
+	      </if>
+	      <if test="endRatio != null" >
+	        endRatio = #{endRatio},
+	      </if>
+	      <if test="count != null" >
+	        count = #{count},
+	      </if>
+	      where eventId = #{eventId}
+	</update>
+</mapper>

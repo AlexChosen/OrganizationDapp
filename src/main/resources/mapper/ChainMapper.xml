@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.pingan.chain.mapper.ChainMappper">
+    <resultMap id="chainResult" type="com.pingan.chain.domain.ChainAccount">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <result column="address" property="address" jdbcType="VARCHAR"/>
+        <result column="balance" property="balance" jdbcType="BIGINT"/>
+        <result column="exchange" property="exchange" jdbcType="VARCHAR"/>
+        <result column="file_name" property="fileName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="modelResult" type="com.pingan.chain.domain.ModelAccount">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="address" property="address" jdbcType="BIGINT"/>
+        <result column="balance" property="balance" jdbcType="BIGINT"/>
+        <result column="release_time" property="releaseTime" jdbcType="TIMESTAMP" javaType="java.util.Date"/>
+        <result column="file_name" property="fileName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <insert id="insertUser" parameterType="com.pingan.chain.domain.ChainAccount">
+        insert into chain_account(user_id,address,balance,frozen,exchange,file_name,password)
+        values (#{userId}, #{address},
+        #{balance},#{frozen},#{exchange},#{fileName},#{password})
+    </insert>
+
+    <insert id="insertModel" parameterType="com.pingan.chain.domain.ModelAccount">
+        insert into model_account(name,address,balance,frozen,file_name,password)
+        values (#{name}, #{address},
+        #{balance},#{frozen},#{fileName},#{password})
+    </insert>
+
+    <update id="frozenUser" parameterType="map">
+    update chain_account set frozen = #{frozen}
+    where user_id = #{userId}
+    </update>
+
+    <update id="frozenModel" parameterType="map">
+    update model_account set frozen = #{frozen}
+    where name = #{name}
+    </update>
+
+    <select id="getChainAccount" parameterType="map" resultMap="chainResult">
+        select * from chain_account where user_id = #{userId}
+    </select>
+
+    <update id="releasePoint" parameterType="map">
+        update model_account set balance = (balance+#{addBanlance}) where name = #{modelName}
+    </update>
+
+    <select id="getModelAccount" parameterType="java.lang.String"  resultMap="modelResult" >
+        select * from model_account where name = #{name}
+    </select>
+
+    <update id="transferToUser" parameterType="map">
+        update chain_account set balance = (balance+#{addBanlance}) where user_id = #{userId}
+    </update>
+
+    <update id="userWithdraw" parameterType="map">
+        update chain_account set balance = (balance-#{addBanlance}) where user_id = #{userId}
+    </update>
+
+    <update id="transferFromModel" parameterType="map">
+        update model_account set balance = (balance-#{addBanlance}) where name = #{modelName}
+    </update>
+
+    <select id="getModelAccounts" resultMap="modelResult">
+        select * from model_account
+    </select>
+
+
+    <select id="getChainAccounts" resultMap="chainResult">
+        select * from chain_account
+    </select>
+
+</mapper>
