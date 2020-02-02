@@ -1,9 +1,11 @@
 package com.pingan.chain.service.impl;
 
+import com.pingan.chain.contract.PlatformControl;
 import com.pingan.chain.mapper.ChainMappper;
 import com.pingan.chain.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.web3j.abi.EventValues;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.RawTransaction;
 import org.web3j.crypto.TransactionEncoder;
@@ -13,11 +15,14 @@ import org.web3j.protocol.admin.Admin;
 import org.web3j.protocol.admin.methods.response.PersonalUnlockAccount;
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.request.EthFilter;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthGasPrice;
 import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.protocol.http.HttpService;
+import org.web3j.tx.Contract;
 import org.web3j.tx.Transfer;
 import org.web3j.utils.Convert;
 import org.web3j.utils.Numeric;
@@ -31,11 +36,8 @@ import static org.web3j.tx.Transfer.GAS_LIMIT;
 
 @Service
 public class TransactionServiceImpl implements TransactionService {
-    @Autowired
-    Admin admin;
+    Admin admin = Admin.build(new HttpService());
 
-    @Autowired
-    Web3j web3j;
 
     @Autowired
     ChainMappper chainMappper;
@@ -108,5 +110,28 @@ public class TransactionServiceImpl implements TransactionService {
             System.out.println(e.getMessage());
         }
         return  true;
+    }
+
+    @Override
+    public boolean deployContract(){
+        try{
+            System.out.println(admin.netVersion().send().getNetVersion());
+            Credentials credentials = WalletUtils.loadCredentials(OWNER_PW, WallectPath+OWNER_FILE);
+            PlatformControl platformControl2 = PlatformControl.deploy(admin, credentials, Contract.GAS_PRICE, Contract.GAS_LIMIT,
+                    "TestCon", "PTS", BigInteger.valueOf(1), BigInteger.valueOf(1000000000)).sendAsync().get();
+
+
+            PlatformControl platformControl =PlatformControl.load(platformControl2.getContractAddress(),admin, credentials, GAS_PRICE, GAS_LIMIT);
+            /*if(!platformControl.isValid()){
+                return false;
+            }*/
+
+            System.out.println("succ");
+            TransactionReceipt receipt = platformControl.voteBegin("est", BigInteger.ONE).send();
+
+        }catch (Exception e){
+            System.out.println(e);
+        }
+        return true;
     }
 }

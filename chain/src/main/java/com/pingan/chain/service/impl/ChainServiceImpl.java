@@ -20,6 +20,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.admin.Admin;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
+import org.web3j.protocol.http.HttpService;
 
 import javax.annotation.Resource;
 import java.io.File;
@@ -35,8 +36,7 @@ public class ChainServiceImpl implements ChainService {
     @Resource
     ChainMappper chainMappper;
 
-    @Autowired
-    Web3j web3j;
+    Web3j web3j = Web3j.build(new HttpService());
 
     @Value("${contract.address}")
     String contractAddress;
@@ -146,9 +146,11 @@ public class ChainServiceImpl implements ChainService {
 
             //调用合约方法
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            System.out.println(contract.isValid());
             TransactionReceipt send = contract.removeAuthorizedGroup(account.getAddress()).send();
+            List<PlatformControl.RemoveGroupEventResponse> result = contract.getRemoveGroupEvents(send);
+
             System.out.println(send);
             chainMappper.frozenModel(modelName, "1");
         } catch (Exception e) {
@@ -164,6 +166,7 @@ public class ChainServiceImpl implements ChainService {
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, gasPrice, BigInteger.valueOf(3000000));
             TransactionReceipt send = contract.transferToUserByGroup(userNameToAddress(user), BigInteger.valueOf(amount)).send();
+
             chainMappper.transferToUser(user, amount);
             chainMappper.transferFromModel(model, amount);
         }catch (Exception e){

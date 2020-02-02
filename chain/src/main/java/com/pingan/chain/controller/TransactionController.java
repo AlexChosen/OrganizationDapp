@@ -30,4 +30,10 @@ public class TransactionController {
         boolean result = transactionService.sendEthTransfer(from, passWd, to, value);
         return new ChainResponse(result);
     }
+
+    @GetMapping("/deploy")
+    public ChainResponse deploy(){
+        boolean result = transactionService.deployContract();
+        return new ChainResponse(result);
+    }
 }
