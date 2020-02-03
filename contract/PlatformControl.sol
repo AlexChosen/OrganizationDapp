@@ -30,7 +30,6 @@ contract PlatformControl{
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event Approval(address indexed owner, address indexed spender, uint256 value);
-	event ReleaseDaily(address indexed to, uint256 value);
 	
 	constructor (string memory name, string memory symbol, uint8 decimals, uint256 totalSupply) public {
         _name = name;
@@ -89,7 +88,7 @@ contract PlatformControl{
 		require(address(group) != address(0), "releaseDaily: group is the zero address");
 		uint256 amount = dailyReleaseAmount.div(authorizedGroup.length);
 		transfer(group, amount);
-		emit ReleaseDaily(group, amount);
+		emit Transfer(_owner, group, amount);
 		return amount;
 	}
 	
