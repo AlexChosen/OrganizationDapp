@@ -6,14 +6,14 @@ contract PlatformControl{
 	address private _owner;
 	address[] public authorizedGroup;
 	mapping (address => bool) public frozenAccount;
-	uint256 public dailyReleaseAmount = 10 ** 6;
+	 uint256  public dailyReleaseAmount = 10 ** 6;
 	uint256 public largeAmount = 50000;
 	
 	string private _name;
     string private _symbol;
     uint8 private _decimals;
 	uint256 private _totalSupply;
-	
+	uint256 private _originSupply;
 	
 	using SafeMath for uint256;
 
@@ -21,37 +21,154 @@ contract PlatformControl{
 
     mapping (address => mapping (address => uint256)) internal _allowances;
 
+	
+	
+	struct Vote {
+		string issue;
+		uint beginTime;
+		uint votingTime;
+		mapping (address => bool) voter;
+		bool valid;
+		bool result;
+	}
+	Vote[] public voteIssues;
 
 	event AddGroup(address group);
 	event RemoveGroup(address group);
     event FrozenFunds(address target, bool frozen);
 	event LargeAmountTransfer(address from ,address to, uint256 amount);
-	event LargeAmountPay(address from ,uint256 amount);
+	event LargeAmountPay(address group, address from ,uint256 amount);
 	event Transfer(address indexed from, address indexed to, uint256 value);
 	event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event Approval(address indexed owner, address indexed spender, uint256 value);
+	event BeginVote(string issue, uint256 voteTime);
+	event CalcVote(string issue, bool result);
 	
 	constructor (string memory name, string memory symbol, uint8 decimals, uint256 totalSupply) public {
         _name = name;
         _symbol = symbol;
         _decimals = decimals;
 		_totalSupply = totalSupply;
+		_originSupply = _totalSupply;
 		_balances[msg.sender] = _totalSupply;
 		_owner = msg.sender;
         emit OwnershipTransferred(address(0), _owner);
     }
+	
+		
+	function setLargeAmount(uint256 amount) public onlyOwner {
+		largeAmount = amount;
+	}	
 
+	function voteBegin(string memory issue, uint256 voteType) public onlyOwner returns(bool){
+		uint i =0;
+		for(i =0 ;i<voteIssues.length; i++){
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			{
+				break;
+			}
+		}
+		if(i!=voteIssues.length){
+			//该issue仍在投票中
+			if(voteIssues[i].valid==true){
+				return false;
+			}
+		}
+	
+		uint voteTime = 0;
+		if(voteType == 1){
+			voteTime = 1 hours;
+		}else if(voteType == 2){
+			voteTime = 1 days;
+		}else if(voteType == 3){
+			voteTime = 1 weeks;
+		}else {
+			return false;
+		}
+
+		Vote memory vote = Vote({issue:issue, beginTime:now, result:false, valid:true, votingTime:voteType});
+
+		for(uint j=0;j<authorizedGroup.length;j++){
+			//默认所有投票者为同意
+			voteIssues[j].voter[authorizedGroup[j]]=true;
+		}
+		
+		voteIssues.push(vote);
+		emit BeginVote(issue, voteType);
+		return true;
+	}
+	
+	function voteByGroup(string memory issue,bool voteView) public onlyGroup returns(bool){
+		uint i = 0;
+		for(i =0 ;i<voteIssues.length; i++){
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			{
+				break;
+			}
+		}
+		require(i != voteIssues.length, "voteByGroup: issue is not in voteIssues");
+		require(now< (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteByGroup: vote is only valid in 1 day");
+		voteIssues[i].voter[msg.sender] = voteView;
+		return true;
+	}
+	
+	function calcVoteResult(string memory issue) public onlyOwner returns(bool){
+		uint i =0;
+		for(i =0 ;i<voteIssues.length; i++){
+		    if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			{
+				break;
+			}
+		}
+		require(i != voteIssues.length, "voteResult: issue is not in voteIssues");
+		require(now< (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteResult: result is valid after 1 day");
+
+		Vote storage vote = voteIssues[i];
+		vote.valid=false;
+		uint count=0;
+		for(uint j=0;j<authorizedGroup.length;j++){
+			if(vote.voter[authorizedGroup[j]] == false){
+				count++;
+			}
+		}
+		if(count*2 <= authorizedGroup.length)
+		{
+			vote.result = true;
+		}
+		else {
+			vote.result = false;
+		}
+		emit CalcVote(vote.issue, vote.result);
+		return true;
+	}
+	
+	function _getIssueResult(string memory issue) internal view returns(bool){
+		uint i =0;
+		for(i =0 ;i<voteIssues.length; i++){
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			{
+				break;
+			}
+		}
+		if(i==voteIssues.length){
+			return false;
+		}
+		if(voteIssues[i].valid==true && voteIssues[i].result==true){
+			return true;
+		}
+		return false;
+	}
+	
+
+	
 	function addAuthorizedGroup(address group) public onlyOwner returns(bool){
 		require(address(group) != address(0), "addAuthorizedGroup: group is the zero address");
+		require(_getIssueResult("addAuthorizedGroup")==true, "addAuthorizedGroup: issue not accepted by groups");
 		authorizedGroup.push(group);
 		emit AddGroup(group);
 		return true;
 	}	
-	
-	function setLargeAmount(uint256 amount) public onlyOwner {
-		largeAmount = amount;
-	}
-	
+		
 	function removeAuthorizedGroup(address group) public onlyOwner returns(bool){
 		require(address(group) != address(0), "removeAuthorizedGroup: group is the zero address");
 		uint i=0;
@@ -61,6 +178,7 @@ contract PlatformControl{
 			}
 		}
 		require(i!=authorizedGroup.length, "removeAuthorizedGroup: group is not in authorizedGroup");
+		require(_getIssueResult("removeAuthorizedGroup")==true, "addAuthorizedGroup: issue not accepted by groups");
 		authorizedGroup[i] = authorizedGroup[authorizedGroup.length-1];
 		delete authorizedGroup[authorizedGroup.length-1];
 		authorizedGroup.length--;
@@ -102,15 +220,12 @@ contract PlatformControl{
 	
 	function userPayByGroup(address user, uint256 amount) public onlyGroup{
 		require(!frozenAccount[user], ":User is frozen.");
-		burnFrom(user, amount);
+		_burnFrom(user, amount);
 		if(amount >= largeAmount){
-			emit LargeAmountPay(user, amount);
+			emit LargeAmountPay(msg.sender, user, amount);
 		}
 	}	
 	
-	function burnFrom(address account, uint256 amount) public {
-        _burnFrom(account, amount);
-    }
 	
     function name() public view returns (string memory) {
         return _name;
@@ -132,6 +247,9 @@ contract PlatformControl{
 		return true;
 	}
 	
+    function originSupply() public view returns (uint256) {
+        return _originSupply;
+    }
 	
     function totalSupply() public view returns (uint256) {
         return _totalSupply;

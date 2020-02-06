@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
+import org.web3j.abi.EventValues;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.generated.Uint256;
@@ -66,7 +67,10 @@ public class ChainServiceImpl implements ChainService {
             Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
             TransactionReceipt send =contract.releaseDaily(account.getAddress()).send();
-            addBanlance=Long.parseLong(send.getLogs().get(0).getData().substring(2),16);
+            for(PlatformControl.TransferEventResponse response:contract.getTransferEvents(send)){
+                System.out.println(response);
+                addBanlance = response.value.longValue();
+            }
             System.out.println(addBanlance);
         }catch (Exception e){
             e.printStackTrace();
@@ -103,6 +107,7 @@ public class ChainServiceImpl implements ChainService {
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
             TransactionReceipt send = contract.addAuthorizedGroup(address).send();
             System.out.println(send);
+
 
             ModelAccount modelAccount = new ModelAccount();
             modelAccount.setAddress(address);
