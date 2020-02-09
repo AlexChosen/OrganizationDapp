@@ -22,13 +22,13 @@ contract PlatformControl{
     mapping (address => mapping (address => uint256)) internal _allowances;
 
 	
-	
 	struct Vote {
 		string issue;
+		string info;
 		uint beginTime;
 		uint votingTime;
 		mapping (address => bool) voter;
-		bool valid;
+		bool valid; //投票中为true，投票完为false
 		bool result;
 	}
 	Vote[] public voteIssues;
@@ -60,7 +60,7 @@ contract PlatformControl{
 		largeAmount = amount;
 	}	
 
-	function voteBegin(string memory issue, uint256 voteType) public onlyOwner returns(bool){
+	function voteBegin(string memory issue, string memory info, uint256 voteType) public onlyOwner returns(bool){
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
 			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
@@ -76,7 +76,9 @@ contract PlatformControl{
 		}
 	
 		uint voteTime = 0;
-		if(voteType == 1){
+		if(voteType == 0){
+			voteTime = 1 minutes;
+		}else if(voteType == 1){
 			voteTime = 1 hours;
 		}else if(voteType == 2){
 			voteTime = 1 days;
@@ -86,14 +88,13 @@ contract PlatformControl{
 			return false;
 		}
 
-		Vote memory vote = Vote({issue:issue, beginTime:now, result:false, valid:true, votingTime:voteType});
-
+        voteIssues.push(Vote({issue:issue, info:info, beginTime:now, result:false, valid:true, votingTime:voteTime}));
+    	Vote storage vote = voteIssues[voteIssues.length-1];
 		for(uint j=0;j<authorizedGroup.length;j++){
 			//默认所有投票者为同意
-			voteIssues[j].voter[authorizedGroup[j]]=true;
+			vote.voter[authorizedGroup[j]]=true;
 		}
 		
-		voteIssues.push(vote);
 		emit BeginVote(issue, voteType);
 		return true;
 	}
@@ -101,27 +102,29 @@ contract PlatformControl{
 	function voteByGroup(string memory issue,bool voteView) public onlyGroup returns(bool){
 		uint i = 0;
 		for(i =0 ;i<voteIssues.length; i++){
-			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)) && voteIssues[i].valid == true)
 			{
 				break;
 			}
 		}
 		require(i != voteIssues.length, "voteByGroup: issue is not in voteIssues");
-		require(now< (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteByGroup: vote is only valid in 1 day");
+		require(now< (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteByGroup: voting is no longer valid");
 		voteIssues[i].voter[msg.sender] = voteView;
-		return true;
+		return true; 
 	}
 	
 	function calcVoteResult(string memory issue) public onlyOwner returns(bool){
+	    _delLastVotedIssueOfSameName(issue);
+	    
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
-		    if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+		    if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)) && voteIssues[i].valid == true)
 			{
 				break;
 			}
 		}
-		require(i != voteIssues.length, "voteResult: issue is not in voteIssues");
-		require(now< (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteResult: result is valid after 1 day");
+		require(i != voteIssues.length, "voteResult: issue is not valid in voteIssues");
+		require(now> (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteResult: voting is still in process");
 
 		Vote storage vote = voteIssues[i];
 		vote.valid=false;
@@ -139,22 +142,33 @@ contract PlatformControl{
 			vote.result = false;
 		}
 		emit CalcVote(vote.issue, vote.result);
+		
 		return true;
 	}
+	
+	/*只保留最后一个同名issue*/
+	function _delLastVotedIssueOfSameName(string memory issue) internal {
+		uint i =0;
+		for(i =0 ;i<voteIssues.length; i++){
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue))  && voteIssues[i].valid == false){
+				voteIssues[i] = voteIssues[voteIssues.length-1];
+				delete voteIssues[voteIssues.length-1];
+				voteIssues.length--;
+				break;
+			}
+		}
+	}
+	
 	
 	function _getIssueResult(string memory issue) internal view returns(bool){
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
-			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue))  && voteIssues[i].valid == false)
 			{
-				break;
+				if(voteIssues[i].valid==false && voteIssues[i].result==true){
+					return true;
+				}
 			}
-		}
-		if(i==voteIssues.length){
-			return false;
-		}
-		if(voteIssues[i].valid==true && voteIssues[i].result==true){
-			return true;
 		}
 		return false;
 	}
