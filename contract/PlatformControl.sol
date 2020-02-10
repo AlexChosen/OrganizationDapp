@@ -63,17 +63,12 @@ contract PlatformControl{
 	function voteBegin(string memory issue, string memory info, uint256 voteType) public onlyOwner returns(bool){
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
-			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)))
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)) && voteIssues[i].valid == true)
 			{
 				break;
 			}
 		}
-		if(i!=voteIssues.length){
-			//该issue仍在投票中
-			if(voteIssues[i].valid==true){
-				return false;
-			}
-		}
+		require(i==voteIssues.length, "voteBegin: another same name issue is in voting");
 	
 		uint voteTime = 0;
 		if(voteType == 0){
@@ -114,8 +109,6 @@ contract PlatformControl{
 	}
 	
 	function calcVoteResult(string memory issue) public onlyOwner returns(bool){
-	    _delLastVotedIssueOfSameName(issue);
-	    
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
 		    if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue)) && voteIssues[i].valid == true)
@@ -127,7 +120,6 @@ contract PlatformControl{
 		require(now> (voteIssues[i].beginTime + voteIssues[i].votingTime), "voteResult: voting is still in process");
 
 		Vote storage vote = voteIssues[i];
-		vote.valid=false;
 		uint count=0;
 		for(uint j=0;j<authorizedGroup.length;j++){
 			if(vote.voter[authorizedGroup[j]] == false){
@@ -141,12 +133,13 @@ contract PlatformControl{
 		else {
 			vote.result = false;
 		}
+		//_delLastVotedIssueOfSameName(issue);
 		emit CalcVote(vote.issue, vote.result);
 		
 		return true;
 	}
 	
-	/*只保留最后一个同名issue*/
+	/*保留最后一个同名issue*/
 	function _delLastVotedIssueOfSameName(string memory issue) internal {
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
@@ -159,13 +152,23 @@ contract PlatformControl{
 		}
 	}
 	
+	function _invalidIssue(string memory issue) internal {
+	    uint i =0;
+		for(i =0 ;i<voteIssues.length; i++){
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue))  && voteIssues[i].valid == true){
+				voteIssues[i].valid = false;
+				break;
+			}
+		}
+	}
+	
 	
 	function _getIssueResult(string memory issue) internal view returns(bool){
 		uint i =0;
 		for(i =0 ;i<voteIssues.length; i++){
-			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue))  && voteIssues[i].valid == false)
+			if(keccak256(bytes(issue)) == keccak256(bytes(voteIssues[i].issue))  && voteIssues[i].valid == true)
 			{
-				if(voteIssues[i].valid==false && voteIssues[i].result==true){
+				if(voteIssues[i].result==true){
 					return true;
 				}
 			}
@@ -176,14 +179,17 @@ contract PlatformControl{
 
 	
 	function addAuthorizedGroup(address group) public onlyOwner returns(bool){
+	    string memory voteName = "addAuthorizedGroup";
 		require(address(group) != address(0), "addAuthorizedGroup: group is the zero address");
-		require(_getIssueResult("addAuthorizedGroup")==true, "addAuthorizedGroup: issue not accepted by groups");
+		require(_getIssueResult(voteName)==true, "addAuthorizedGroup: issue not accepted by groups");
 		authorizedGroup.push(group);
+		_invalidIssue(voteName);
 		emit AddGroup(group);
 		return true;
 	}	
 		
 	function removeAuthorizedGroup(address group) public onlyOwner returns(bool){
+	    string memory voteName = "removeAuthorizedGroup";
 		require(address(group) != address(0), "removeAuthorizedGroup: group is the zero address");
 		uint i=0;
 		for(i=0;i<authorizedGroup.length;i++){
@@ -192,10 +198,12 @@ contract PlatformControl{
 			}
 		}
 		require(i!=authorizedGroup.length, "removeAuthorizedGroup: group is not in authorizedGroup");
-		require(_getIssueResult("removeAuthorizedGroup")==true, "addAuthorizedGroup: issue not accepted by groups");
+		require(_getIssueResult(voteName)==true, "addAuthorizedGroup: issue not accepted by groups");
+		
 		authorizedGroup[i] = authorizedGroup[authorizedGroup.length-1];
 		delete authorizedGroup[authorizedGroup.length-1];
 		authorizedGroup.length--;
+		_invalidIssue(voteName);
 		emit RemoveGroup(group);
 		return true;
 	}	
