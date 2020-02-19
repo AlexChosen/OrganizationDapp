@@ -4,6 +4,7 @@ import com.pingan.chain.contract.PlatformControl;
 import com.pingan.chain.domain.ChainAccount;
 import com.pingan.chain.domain.ModelAccount;
 import com.pingan.chain.mapper.ChainMappper;
+import com.pingan.chain.mapper.ModelMapper;
 import com.pingan.chain.service.ChainService;
 import org.bouncycastle.math.raw.Mod;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,8 @@ import org.web3j.protocol.admin.Admin;
 import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.http.HttpService;
+import org.web3j.tx.gas.ContractGasProvider;
+import org.web3j.tx.gas.DefaultGasProvider;
 
 import javax.annotation.Resource;
 import java.io.File;
@@ -36,6 +39,9 @@ public class ChainServiceImpl implements ChainService {
 
     @Resource
     ChainMappper chainMappper;
+
+    @Autowired
+    ModelMapper modelMapper;
 
     Web3j web3j = Web3j.build(new HttpService());
 
@@ -61,7 +67,7 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public void releaseDaily(String modelName) {
         Long addBanlance = 0L;
-        ModelAccount account = chainMappper.getModelAccount(modelName);
+        ModelAccount account = modelMapper.getModelAccount(modelName);
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
@@ -75,7 +81,7 @@ public class ChainServiceImpl implements ChainService {
         }catch (Exception e){
             e.printStackTrace();
         }
-        chainMappper.releasePoint(modelName, addBanlance);
+        modelMapper.releasePoint(modelName, addBanlance);
     }
 
     @Override
@@ -103,10 +109,12 @@ public class ChainServiceImpl implements ChainService {
             String walletFileName = creatAccount(modelName, password);
             Credentials credentials = loadAccount(walletFileName, password);
             String address= credentials.getAddress();
-            BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            ContractGasProvider gasProvider = new  DefaultGasProvider();
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasProvider);
             TransactionReceipt send = contract.addAuthorizedGroup(address).send();
-            System.out.println(send);
+            for(PlatformControl.AddGroupEventResponse response: contract.getAddGroupEvents(send)){
+                System.out.println(response);
+            }
 
 
             ModelAccount modelAccount = new ModelAccount();
@@ -116,7 +124,7 @@ public class ChainServiceImpl implements ChainService {
             modelAccount.setBalance(0L);
             modelAccount.setFileName(walletFileName);
             modelAccount.setPassword(password);
-            chainMappper.insertModel(modelAccount);
+            modelMapper.insertModel(modelAccount);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -147,7 +155,7 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public void frozenModel(String modelName) {
         try {
-            ModelAccount account = chainMappper.getModelAccount(modelName);
+            ModelAccount account = modelMapper.getModelAccount(modelName);
 
             //调用合约方法
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
@@ -157,7 +165,7 @@ public class ChainServiceImpl implements ChainService {
             List<PlatformControl.RemoveGroupEventResponse> result = contract.getRemoveGroupEvents(send);
 
             System.out.println(send);
-            chainMappper.frozenModel(modelName, "1");
+            modelMapper.frozenModel(modelName, "1");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -165,7 +173,7 @@ public class ChainServiceImpl implements ChainService {
 
     @Override
     public void transferByModel(String model, String user, long amount){
-        ModelAccount account = chainMappper.getModelAccount(model);
+        ModelAccount account = modelMapper.getModelAccount(model);
         try {
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());
@@ -173,7 +181,7 @@ public class ChainServiceImpl implements ChainService {
             TransactionReceipt send = contract.transferToUserByGroup(userNameToAddress(user), BigInteger.valueOf(amount)).send();
 
             chainMappper.transferToUser(user, amount);
-            chainMappper.transferFromModel(model, amount);
+            modelMapper.transferFromModel(model, amount);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -182,7 +190,7 @@ public class ChainServiceImpl implements ChainService {
 
     @Override
     public void userWithdraw(String model,String userId, long amount){
-        ModelAccount account = chainMappper.getModelAccount(model);
+        ModelAccount account = modelMapper.getModelAccount(model);
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());
@@ -196,7 +204,8 @@ public class ChainServiceImpl implements ChainService {
 
     @Override
     public ModelAccount getModel(String model) {
-        return chainMappper.getModelAccount(model);
+        modelMapper.selectList(null).forEach(System.out::println);
+        return modelMapper.getModelAccount(model);
     }
 
     @Override
@@ -237,7 +246,7 @@ public class ChainServiceImpl implements ChainService {
 
     @Override
     public List<ModelAccount> getModels() {
-        return chainMappper.getModelAccounts();
+        return modelMapper.getModelAccounts();
     }
 
     @Override
@@ -291,13 +300,13 @@ public class ChainServiceImpl implements ChainService {
     }
 
     @Override
-    public boolean startVote(String issueName, int type) {
+    public boolean startVote(String issueName, String info,int type) {
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
             TransactionReceipt receipt = new TransactionReceipt();
             receipt.setFrom("123");
-            receipt = contract.voteBegin(issueName, BigInteger.valueOf(type)).send();
+            receipt = contract.voteBegin(issueName,info,BigInteger.valueOf(type)).send();
             return true;
         }catch (Exception e){
             e.printStackTrace();
@@ -307,7 +316,7 @@ public class ChainServiceImpl implements ChainService {
 
     @Override
     public boolean voteForIssue(String issueName, String model, boolean view) {
-        ModelAccount account = chainMappper.getModelAccount(model);
+        ModelAccount account = modelMapper.getModelAccount(model);
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());

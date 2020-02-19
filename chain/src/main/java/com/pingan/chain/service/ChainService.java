@@ -41,7 +41,7 @@ public interface ChainService {
 
     long getDailyRelease();
 
-    boolean startVote(String issueName, int type);
+    boolean startVote(String issueName, String info,int type);
 
     boolean voteForIssue(String issueName, String model, boolean view);
 

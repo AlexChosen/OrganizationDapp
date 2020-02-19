@@ -195,10 +195,8 @@ contract PlatformControl{
 		for(i=0;i<authorizedGroup.length;i++){
 			if(authorizedGroup[i] == group){
 				break;
-			}
-		}
-		require(i!=authorizedGroup.length, "removeAuthorizedGroup: group is not in authorizedGroup");
-		require(_getIssueResult(voteName)==true, "addAuthorizedGroup: issue not accepted by groups");
+				}
+}		require(_getIssueResult(voteName)==true, "addAuthorizedGroup: issue not accepted by groups");
 		
 		authorizedGroup[i] = authorizedGroup[authorizedGroup.length-1];
 		delete authorizedGroup[authorizedGroup.length-1];

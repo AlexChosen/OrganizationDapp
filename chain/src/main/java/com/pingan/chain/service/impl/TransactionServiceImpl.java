@@ -117,17 +117,19 @@ public class TransactionServiceImpl implements TransactionService {
         try{
             System.out.println(admin.netVersion().send().getNetVersion());
             Credentials credentials = WalletUtils.loadCredentials(OWNER_PW, WallectPath+OWNER_FILE);
-            PlatformControl platformControl2 = PlatformControl.deploy(admin, credentials, Contract.GAS_PRICE, Contract.GAS_LIMIT,
+            PlatformControl platformControl = PlatformControl.deploy(admin, credentials, Contract.GAS_PRICE, Contract.GAS_LIMIT,
                     "TestCon", "PTS", BigInteger.valueOf(1), BigInteger.valueOf(1000000000)).sendAsync().get();
 
 
+/*
             PlatformControl platformControl =PlatformControl.load(platformControl2.getContractAddress(),admin, credentials, GAS_PRICE, GAS_LIMIT);
-            /*if(!platformControl.isValid()){
+*/
+            if(!platformControl.isValid()){
                 return false;
-            }*/
+            }
 
             System.out.println("succ");
-            TransactionReceipt receipt = platformControl.voteBegin("est", BigInteger.ONE).send();
+            TransactionReceipt receipt = platformControl.voteBegin("est", "test", BigInteger.ZERO).send();
 
         }catch (Exception e){
             System.out.println(e);
