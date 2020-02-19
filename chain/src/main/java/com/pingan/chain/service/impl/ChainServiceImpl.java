@@ -1,11 +1,15 @@
 package com.pingan.chain.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.pingan.chain.contract.PlatformControl;
 import com.pingan.chain.domain.ChainAccount;
 import com.pingan.chain.domain.ModelAccount;
 import com.pingan.chain.mapper.ChainMappper;
 import com.pingan.chain.mapper.ModelMapper;
 import com.pingan.chain.service.ChainService;
+import org.apache.ibatis.annotations.Param;
 import org.bouncycastle.math.raw.Mod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -204,8 +208,10 @@ public class ChainServiceImpl implements ChainService {
 
     @Override
     public ModelAccount getModel(String model) {
-        modelMapper.selectList(null).forEach(System.out::println);
-        return modelMapper.getModelAccount(model);
+        ModelAccount account = new ModelAccount();
+        account.setName(model);
+
+        return modelMapper.selectOne(new QueryWrapper<ModelAccount>(account));
     }
 
     @Override

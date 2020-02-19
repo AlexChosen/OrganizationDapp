@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.pingan.chain.mapper.ModelMapper">
+
+    <resultMap id="modelResult" type="com.pingan.chain.domain.ModelAccount">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="address" property="address" jdbcType="BIGINT"/>
+        <result column="balance" property="balance" jdbcType="BIGINT"/>
+        <result column="release_time" property="releaseTime" jdbcType="TIMESTAMP" javaType="java.util.Date"/>
+        <result column="file_name" property="fileName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+
+    <insert id="insertModel" parameterType="com.pingan.chain.domain.ModelAccount">
+        insert into model_account(name,address,balance,frozen,file_name,password)
+        values (#{name}, #{address},
+        #{balance},#{frozen},#{fileName},#{password})
+    </insert>
+
+    <update id="frozenModel" parameterType="map">
+        update model_account set frozen = #{frozen}
+        where name = #{name}
+    </update>
+
+    <update id="releasePoint" parameterType="map">
+        update model_account set balance = (balance+#{addBanlance}) where name = #{modelName}
+    </update>
+
+    <select id="getModelAccount" parameterType="java.lang.String"  resultMap="modelResult" >
+        select * from model_account where name = #{name}
+    </select>
+
+
+    <update id="transferFromModel" parameterType="map">
+        update model_account set balance = (balance-#{addBanlance}) where name = #{modelName}
+    </update>
+
+    <select id="getModelAccounts" resultMap="modelResult">
+        select * from model_account
+    </select>
+
+
+</mapper>
