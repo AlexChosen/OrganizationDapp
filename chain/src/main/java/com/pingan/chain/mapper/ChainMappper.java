@@ -9,8 +9,6 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 public interface ChainMappper extends BaseMapper<ChainAccount> {
-    void insertUser(ChainAccount um);
-
     void frozenUser(@Param(value = "userId") String userId, @Param(value = "frozen") String frozen);
 
     ChainAccount getChainAccount(@Param(value = "userId")String userId);

@@ -75,7 +75,7 @@ public class ChainServiceImpl implements ChainService {
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             TransactionReceipt send =contract.releaseDaily(account.getAddress()).send();
             for(PlatformControl.TransferEventResponse response:contract.getTransferEvents(send)){
                 System.out.println(response);
@@ -91,6 +91,11 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public void registerUser(String um, String password) {
         try {
+            ChainAccount account = chainMappper.selectOne(new QueryWrapper<ChainAccount>().eq("name",um));
+            if(account!=null){
+                System.out.println("account exist: "+um);
+                return;
+            }
             String walletFileName = creatAccount(um, password);
             String address = loadAccount(walletFileName, password).getAddress();
             ChainAccount chainAccount = new ChainAccount();
@@ -101,7 +106,7 @@ public class ChainServiceImpl implements ChainService {
             chainAccount.setFrozen("0");
             chainAccount.setFileName(walletFileName);
             chainAccount.setPassword(password);
-            chainMappper.insertUser(chainAccount);
+            chainMappper.insert(chainAccount);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -110,6 +115,11 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public void addModel(String modelName, String password) {
         try {
+            ModelAccount model = modelMapper.selectOne(new QueryWrapper<ModelAccount>().eq("name", modelName));
+            if(model!=null){
+                System.out.println("model exist: "+ modelName);
+                return ;
+            }
             String walletFileName = creatAccount(modelName, password);
             Credentials credentials = loadAccount(walletFileName, password);
             String address= credentials.getAddress();
@@ -117,7 +127,7 @@ public class ChainServiceImpl implements ChainService {
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasProvider);
             TransactionReceipt send = contract.addAuthorizedGroup(address).send();
             for(PlatformControl.AddGroupEventResponse response: contract.getAddGroupEvents(send)){
-                System.out.println(response);
+                System.out.println(response.group);
             }
 
 
@@ -128,7 +138,7 @@ public class ChainServiceImpl implements ChainService {
             modelAccount.setBalance(0L);
             modelAccount.setFileName(walletFileName);
             modelAccount.setPassword(password);
-            modelMapper.insertModel(modelAccount);
+            modelMapper.insert(modelAccount);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -141,7 +151,7 @@ public class ChainServiceImpl implements ChainService {
             //调用合约方法
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             contract.freezeAccount(account.getAddress(), isFrozen).send();
             if (isFrozen) {
                 //冻结
@@ -163,7 +173,7 @@ public class ChainServiceImpl implements ChainService {
 
             //调用合约方法
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             System.out.println(contract.isValid());
             TransactionReceipt send = contract.removeAuthorizedGroup(account.getAddress()).send();
             List<PlatformControl.RemoveGroupEventResponse> result = contract.getRemoveGroupEvents(send);
@@ -181,7 +191,7 @@ public class ChainServiceImpl implements ChainService {
         try {
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, new DefaultGasProvider());
             TransactionReceipt send = contract.transferToUserByGroup(userNameToAddress(user), BigInteger.valueOf(amount)).send();
 
             chainMappper.transferToUser(user, amount);
@@ -198,7 +208,7 @@ public class ChainServiceImpl implements ChainService {
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, new DefaultGasProvider());
             TransactionReceipt send = contract.userPayByGroup(userNameToAddress(userId), BigInteger.valueOf(amount)).send();
             chainMappper.userWithdraw(userId, amount);
         }catch (Exception e){
@@ -211,7 +221,7 @@ public class ChainServiceImpl implements ChainService {
         ModelAccount account = new ModelAccount();
         account.setName(model);
 
-        return modelMapper.selectOne(new QueryWrapper<ModelAccount>(account));
+        return modelMapper.selectOne(new QueryWrapper<ModelAccount>().eq("name", model));
     }
 
     @Override
@@ -241,7 +251,7 @@ public class ChainServiceImpl implements ChainService {
     private long getUserAllowance(String user, String model){
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             BigInteger a = contract.allowance(user, model).send();
             return a.longValue();
         }catch (Exception e){
@@ -270,7 +280,8 @@ public class ChainServiceImpl implements ChainService {
         try {
 
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
+            System.out.println(contract.isValid());
             BigInteger a = contract.totalSupply().send();
             return a.longValue();
         } catch (Exception e) {
@@ -283,7 +294,7 @@ public class ChainServiceImpl implements ChainService {
     public long getRemainPoints() {
         try {
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             BigInteger a = contract.balanceOf(ownerCredentials.getAddress()).send();
             return a.longValue();
         } catch (Exception e) {
@@ -296,7 +307,7 @@ public class ChainServiceImpl implements ChainService {
     public long getDailyRelease() {
         try {
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             BigInteger a = contract.dailyReleaseAmount().send();
             return a.longValue();
         } catch (Exception e) {
@@ -309,10 +320,11 @@ public class ChainServiceImpl implements ChainService {
     public boolean startVote(String issueName, String info,int type) {
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
-            TransactionReceipt receipt = new TransactionReceipt();
-            receipt.setFrom("123");
-            receipt = contract.voteBegin(issueName,info,BigInteger.valueOf(type)).send();
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
+            TransactionReceipt receipt = contract.voteBegin(issueName,info,BigInteger.valueOf(type)).send();
+            for(PlatformControl.BeginVoteEventResponse response : contract.getBeginVoteEvents(receipt)){
+                System.out.println(response.voteTime+":"+response.issue);
+            }
             return true;
         }catch (Exception e){
             e.printStackTrace();
@@ -326,8 +338,9 @@ public class ChainServiceImpl implements ChainService {
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(),account.getPassword());
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, credentials, new DefaultGasProvider());
             TransactionReceipt receipt = contract.voteByGroup(issueName, view).send();
+
             return true;
         }catch (Exception e){
             e.printStackTrace();
@@ -339,8 +352,11 @@ public class ChainServiceImpl implements ChainService {
     public boolean calcVote(String issueName) {
         try{
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
-            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, gasPrice, BigInteger.valueOf(3000000));
+            PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             TransactionReceipt receipt = contract.calcVoteResult(issueName).send();
+            for(PlatformControl.CalcVoteEventResponse response:contract.getCalcVoteEvents(receipt)){
+                System.out.println(response.issue + ":" + response.result);
+            }
             return true;
         }catch (Exception e){
             e.printStackTrace();

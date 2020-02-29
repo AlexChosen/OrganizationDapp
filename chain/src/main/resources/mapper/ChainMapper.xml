@@ -10,11 +10,6 @@
         <result column="file_name" property="fileName" jdbcType="VARCHAR"/>
     </resultMap>
 
-    <insert id="insertUser" parameterType="com.pingan.chain.domain.ChainAccount">
-        insert into chain_account(user_id,address,balance,frozen,exchange,file_name,password)
-        values (#{userId}, #{address},
-        #{balance},#{frozen},#{exchange},#{fileName},#{password})
-    </insert>
 
     <update id="frozenUser" parameterType="map">
     update chain_account set frozen = #{frozen}

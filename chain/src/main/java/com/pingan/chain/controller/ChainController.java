@@ -113,11 +113,6 @@ public class ChainController {
         return new ChainResponse<>(chainService.getUsers());
     }
 
-    @RequestMapping("/hello")
-    public String hello(){
-        return "/pages/hello.html";
-    }
-
 
     @RequestMapping("/originPTS")
     @ResponseBody

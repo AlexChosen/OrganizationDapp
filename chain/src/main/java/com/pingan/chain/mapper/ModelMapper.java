@@ -7,7 +7,6 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 public interface ModelMapper extends BaseMapper<ModelAccount> {
-    void insertModel(ModelAccount modelAccount);
     void frozenModel(@Param(value = "name") String name, @Param(value = "frozen") String frozen);
     ModelAccount getModelAccount(@Param(value = "name")String name);
     List<ModelAccount> getModelAccounts();
