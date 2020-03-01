@@ -14,6 +14,8 @@ import org.bouncycastle.math.raw.Mod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.util.ResourceUtils;
 import org.web3j.abi.EventValues;
 import org.web3j.abi.datatypes.Address;
@@ -39,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 
 @Service
+@Transactional
 public class ChainServiceImpl implements ChainService {
 
     @Resource
@@ -54,14 +57,15 @@ public class ChainServiceImpl implements ChainService {
 
     private Credentials ownerCredentials;
 
-    private final String WallectPath="D:\\project\\geth\\data4\\keystore";
-
+    private final String WallectPath="D:\\project\\geth\\data5\\keystore";
 
 
     public ChainServiceImpl() {
+        String ownerWalletFile="\\UTC--2020-02-29T10-25-41.125814400Z--69df7c589c0d72a494b3d298c8b46f0e7e17a1ee";
+
         try{
             ownerCredentials = WalletUtils.loadCredentials("123",
-                    WallectPath+"\\UTC--2019-07-28T13-52-14.467051000Z--b4ebc56d9f99256619313594cc8fcf697f90ce10");
+                    WallectPath + ownerWalletFile);
 
         }catch (Exception e){
             System.out.println(e.getMessage());
@@ -69,10 +73,11 @@ public class ChainServiceImpl implements ChainService {
     }
 
     @Override
-    public void releaseDaily(String modelName) {
-        Long addBanlance = 0L;
-        ModelAccount account = modelMapper.getModelAccount(modelName);
+    public boolean releaseDaily(String modelName) {
+        long addBanlance = 0L;
         try{
+            ModelAccount account = modelMapper.getModelAccount(modelName);
+
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
@@ -84,17 +89,19 @@ public class ChainServiceImpl implements ChainService {
             System.out.println(addBanlance);
         }catch (Exception e){
             e.printStackTrace();
+            return false;
         }
         modelMapper.releasePoint(modelName, addBanlance);
+        return true;
     }
 
     @Override
-    public void registerUser(String um, String password) {
+    public boolean registerUser(String um, String password) {
         try {
             ChainAccount account = chainMappper.selectOne(new QueryWrapper<ChainAccount>().eq("name",um));
             if(account!=null){
                 System.out.println("account exist: "+um);
-                return;
+                return false;
             }
             String walletFileName = creatAccount(um, password);
             String address = loadAccount(walletFileName, password).getAddress();
@@ -109,7 +116,9 @@ public class ChainServiceImpl implements ChainService {
             chainMappper.insert(chainAccount);
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
+        return true;
     }
 
     @Override
@@ -130,7 +139,6 @@ public class ChainServiceImpl implements ChainService {
                 System.out.println(response.group);
             }
 
-
             ModelAccount modelAccount = new ModelAccount();
             modelAccount.setAddress(address);
             modelAccount.setFrozen("0");
@@ -141,6 +149,7 @@ public class ChainServiceImpl implements ChainService {
             modelMapper.insert(modelAccount);
         } catch (Exception e) {
             e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         }
     }
 
