@@ -9,6 +9,7 @@ import com.pingan.chain.domain.ModelAccount;
 import com.pingan.chain.mapper.ChainMappper;
 import com.pingan.chain.mapper.ModelMapper;
 import com.pingan.chain.service.ChainService;
+import io.reactivex.Flowable;
 import org.apache.ibatis.annotations.Param;
 import org.bouncycastle.math.raw.Mod;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,11 @@ import org.web3j.crypto.Credentials;
 import org.web3j.crypto.WalletUtils;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.admin.Admin;
+import org.web3j.protocol.core.DefaultBlockParameter;
+import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.RemoteCall;
+import org.web3j.protocol.core.methods.request.EthFilter;
+import org.web3j.protocol.core.methods.response.EthLog;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.gas.ContractGasProvider;
@@ -129,6 +134,11 @@ public class ChainServiceImpl implements ChainService {
                 System.out.println("model exist: "+ modelName);
                 return ;
             }
+
+            EthFilter filter = new EthFilter(DefaultBlockParameterName.EARLIEST,
+                    DefaultBlockParameterName.LATEST, contractAddress);
+            web3j.ethLogFlowable(filter).subscribe(log -> System.out.println(log));
+
             String walletFileName = creatAccount(modelName, password);
             Credentials credentials = loadAccount(walletFileName, password);
             String address= credentials.getAddress();
@@ -157,11 +167,25 @@ public class ChainServiceImpl implements ChainService {
     public void frozenUser(String um, Boolean isFrozen) {
         ChainAccount account = chainMappper.getChainAccount(um);
         try {
+
             //调用合约方法
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             Credentials credentials = loadAccount(account.getFileName(), account.getPassword());
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
-            contract.freezeAccount(account.getAddress(), isFrozen).send();
+            Flowable<PlatformControl.FrozenFundsEventResponse> flowable = contract.frozenFundsEventFlowable(DefaultBlockParameterName.LATEST, DefaultBlockParameterName.LATEST);
+            flowable.subscribe(log -> System.out.println(log.log));
+
+            EthFilter ethFilter =
+                    new EthFilter(
+                            DefaultBlockParameterName.LATEST,
+                            DefaultBlockParameterName.LATEST,
+                            contractAddress);
+            EthLog ethLog1 = web3j.ethGetLogs(ethFilter).send();
+
+            TransactionReceipt receipt = contract.freezeAccount(account.getAddress(), isFrozen).send();
+
+            EthLog ethLog2 = web3j.ethGetLogs(ethFilter).send();
+
             if (isFrozen) {
                 //冻结
                 chainMappper.frozenUser(um, "1");
@@ -328,6 +352,10 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public boolean startVote(String issueName, String info,int type) {
         try{
+            EthFilter filter = new EthFilter(DefaultBlockParameterName.EARLIEST,
+                    DefaultBlockParameterName.LATEST, contractAddress);
+            web3j.ethLogFlowable(filter).subscribe(log -> System.out.println(log));
+
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             TransactionReceipt receipt = contract.voteBegin(issueName,info,BigInteger.valueOf(type)).send();
@@ -360,6 +388,11 @@ public class ChainServiceImpl implements ChainService {
     @Override
     public boolean calcVote(String issueName) {
         try{
+            EthFilter filter = new EthFilter(DefaultBlockParameterName.EARLIEST,
+                    DefaultBlockParameterName.LATEST, contractAddress);
+            web3j.ethLogFlowable(filter).subscribe(log -> System.out.println(log));
+
+
             BigInteger gasPrice = web3j.ethGasPrice().sendAsync().get().getGasPrice();
             PlatformControl contract = PlatformControl.load(contractAddress, web3j, ownerCredentials, new  DefaultGasProvider());
             TransactionReceipt receipt = contract.calcVoteResult(issueName).send();

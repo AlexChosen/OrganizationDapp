@@ -5,4 +5,6 @@ public interface TransactionService {
     boolean sendEthTransactionWallet(String from, String passWd, String to, long value);
      boolean sendEthTransfer(String from, String passWd, String to, long value);
      boolean deployContract();
+     String ethCallTest();
+     String ethFilter();
     }
