@@ -9,7 +9,7 @@ import java.util.List;
 public interface ChainService {
 
 
-    void releaseDaily(String modelName);
+    boolean releaseDaily(String modelName);
 
     void frozenModel(String modelName);
 
@@ -17,7 +17,7 @@ public interface ChainService {
 
     void frozenUser(String um,Boolean isFrozen);
 
-    void registerUser(String um, String password);
+    boolean registerUser(String um, String password);
 
     void transferByModel(String model, String user, long amount);
 
@@ -41,7 +41,7 @@ public interface ChainService {
 
     long getDailyRelease();
 
-    boolean startVote(String issueName, int type);
+    boolean startVote(String issueName, String info,int type);
 
     boolean voteForIssue(String issueName, String model, boolean view);
 

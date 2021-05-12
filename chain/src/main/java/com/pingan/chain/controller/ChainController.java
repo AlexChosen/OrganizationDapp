@@ -85,6 +85,7 @@ public class ChainController {
     @RequestMapping("/getModel")
     @ResponseBody
     public ChainResponse getModel(String modelName) {
+
         return new ChainResponse<>(chainService.getModel(modelName));
     }
 
@@ -110,11 +111,6 @@ public class ChainController {
     @ResponseBody
     public ChainResponse getUsers() {
         return new ChainResponse<>(chainService.getUsers());
-    }
-
-    @RequestMapping("/hello")
-    public String hello(){
-        return "/pages/hello.html";
     }
 
 
@@ -147,8 +143,8 @@ public class ChainController {
 
     @RequestMapping("/startVote")
     @ResponseBody
-    public ChainResponse startVote(String issueName, int type) {
-        return new ChainResponse<>(chainService.startVote(issueName, type));
+    public ChainResponse startVote(String issueName, String info, int type) {
+        return new ChainResponse<>(chainService.startVote(issueName, info, type));
     }
 
 
